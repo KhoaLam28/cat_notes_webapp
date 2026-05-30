@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notes for You 🐾</title>
+  <link rel="stylesheet" href="cat_notes.css" />
+</head>
+<body>
+
+<div class="paw-bg" id="pawBg"></div>
+
+<div class="app">
+  <header>
+    <div class="header-cats">
+      <span class="cat-emoji">🐱</span>
+      <span class="cat-emoji">🌸</span>
+      <span class="cat-emoji">🐾</span>
+    </div>
+    <h1>Notes for <em>You</em></h1>
+    <p class="subtitle">gui loi nhan cho anh nha <3</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('write')">✦ Write a note</button>
+    <button class="tab-btn" onclick="switchTab('read')">🐾 Read notes</button>
+  </div>
+
+  <!-- WRITE PANEL -->
+  <div class="panel active" id="panel-write">
+    <div class="write-box">
+      <label class="write-label">note title</label>
+      <input class="write-input" id="noteTitle" placeholder="Something sweet…" maxlength="80" />
+
+      <label class="write-label">your message</label>
+      <textarea class="write-textarea" id="noteBody" placeholder="em co tam tinh gi hong"></textarea>
+
+      <div class="divider"></div>
+
+      <div class="cat-row">
+        <span class="mood-label">pick a cat</span>
+        <span class="mood-cat selected" onclick="selectMood(this)" data-cat="😸">😸</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="🥰">🥰</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="😻">😻</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="🐱">🐱</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="😽">😽</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="🐈">🐈</span>
+        <span class="mood-cat" onclick="selectMood(this)" data-cat="🐾">🐾</span>
+      </div>
+
+      <button class="send-btn" id="sendBtn" onclick="sendNote()">Send with love </button>
+    </div>
+  </div>
+
+  <!-- READ PANEL -->
+  <div class="panel" id="panel-read">
+    <div class="notes-header">
+      <span class="notes-count" id="notesCount">Loading…</span>
+      <button class="clear-btn" onclick="clearAll()">clear all</button>
+    </div>
+    <div id="notesGrid" class="notes-grid"></div>
+  </div>
+
+  <div class="footer-cats">🐾 🐱 🐾 🐱 🐾</div>
+</div>
+
+<div class="toast toast-success" id="toastSuccess">Note saved hihi</div>
+<div class="toast toast-error" id="toastError">Something went wrong 😿 Try again!</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwgbXiR44Or63xl3A9c3SJCBhzj_XZ6Lrpe1zcccILDENmhIfvOnl8b7KOAe4PiB7DK/exec';
+  let selectedMood = '😸';
+
+  function makePaws() {
+    const bg = document.getElementById('pawBg');
+    const icons = ['🐾', '🐱', '✦', '🌸', '🐾', '🐱'];
+    for (let i = 0; i < 30; i++) {
+      const s = document.createElement('span');
+      s.textContent = icons[i % icons.length];
+      s.style.left = Math.random() * 100 + '%';
+      s.style.top = Math.random() * 100 + '%';
+      s.style.setProperty('--r', (Math.random() * 60 - 30) + 'deg');
+      bg.appendChild(s);
+    }
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (tab === 'write' && i === 0) || (tab === 'read' && i === 1));
+    });
+    document.getElementById('panel-write').classList.toggle('active', tab === 'write');
+    document.getElementById('panel-read').classList.toggle('active', tab === 'read');
+    if (tab === 'read') renderNotes();
+  }
+
+  function selectMood(el) {
+    document.querySelectorAll('.mood-cat').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedMood = el.dataset.cat;
+  }
+
+  function showToast(type) {
+    const id = type === 'success' ? 'toastSuccess' : 'toastError';
+    const t = document.getElementById(id);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  async function sendNote() {
+    const title = document.getElementById('noteTitle').value.trim();
+    const body = document.getElementById('noteBody').value.trim();
+    if (!body) { document.getElementById('noteBody').focus(); return; }
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending…';
+
+    const note = {
+      action: 'add',
+      id: Date.now(),
+      title: title || 'A little note',
+      body,
+      mood: selectedMood,
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    };
+
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteBody').value = '';
+      showToast('success');
+    } catch (e) {
+      showToast('error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Send with love 🌸';
+    }
+  }
+
+  async function renderNotes() {
+    const grid = document.getElementById('notesGrid');
+    const count = document.getElementById('notesCount');
+    count.textContent = 'Loading notes…';
+    grid.innerHTML = '<div class="empty-state"><div class="big-cat">🐱</div><p>Fetching your notes…</p></div>';
+
+    try {
+      const res = await fetch(API_URL + '?t=' + Date.now());
+      const notes = await res.json();
+
+      if (!notes.length) {
+        count.textContent = 'no notes yet…';
+        grid.innerHTML = '<div class="empty-state"><div class="big-cat">🐱</div><p>No notes yet. Go write something sweet!</p></div>';
+        return;
+      }
+
+      count.textContent = notes.length === 1 ? '1 note waiting for you' : notes.length + ' notes waiting for you';
+      grid.innerHTML = notes.map(n => `
+        <div class="note-card" data-cat="${n.mood}">
+          <div class="note-title">${escHtml(n.title)}</div>
+          <div class="note-body">${escHtml(n.body)}</div>
+          <div class="note-meta">
+            <span class="note-mood">${n.mood}</span>
+            <span>${n.date}</span>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      count.textContent = 'could not load notes 😿';
+      grid.innerHTML = '<div class="empty-state"><div class="big-cat">😿</div><p>Could not reach the server. Check your internet and try again.</p></div>';
+    }
+  }
+
+  async function clearAll() {
+    if (!confirm('Delete all notes? This cannot be undone 🙁')) return;
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' })
+      });
+      setTimeout(renderNotes, 800);
+    } catch (e) {
+      showToast('error');
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  makePaws();
+</script>
+</body>
+</html>
